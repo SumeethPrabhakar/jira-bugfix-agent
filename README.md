@@ -51,6 +51,14 @@ The agent runs the full pipeline, then prints the proposed commit message, the d
 
 Test runner is auto-detected (`pytest`, `npm test`, or `dotnet test`); adapt `run_tests()` for other stacks.
 
+## Running the tests
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+The suite includes regression tests for the bugs described in [DEMO.md](DEMO.md).
+
 ## Design notes
 
 - **Idempotent attempts.** Every patch attempt starts from a clean tree (`git checkout -- .`), so a malformed diff from attempt 2 can't stack on top of attempt 1.
