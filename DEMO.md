@@ -71,3 +71,41 @@ all tests passing. Final state: `committed`, `attempts: 2`.
 
 Both are exactly the class of failure you only find by running the pipeline,
 which is why this demo exists.
+
+## Live API verification
+
+The pipeline was also run end-to-end against the real Anthropic API (no mocked
+LLM responses), using `--local-ticket demo-ticket.json --repo ../demo-calculator`.
+The first two live runs surfaced two more real bugs in the agent itself:
+
+3. **Diff path prefix mismatch on relative `--repo` paths.** `patch()` showed the
+   LLM each candidate file under its raw filesystem path (e.g.
+   `../demo-calculator/calculator.py`), but `git apply` runs with
+   `cwd=repo_path`, which expects paths relative to the repo root
+   (`calculator.py`). The model guessed a plausible-looking but wrong `a/`/`b/`
+   prefix (`demo-calculator/calculator.py`), so every attempt failed with
+   `No such file or directory`. Fixed by showing the LLM `os.path.relpath(f,
+   repo_path)` instead of the raw path.
+4. **Hunk line-count drift on multi-blank-line files.** Even with the correct
+   path, the model occasionally miscounted the blank lines between functions
+   and emitted an off-by-one `@@ -N,4 +N,4 @@` header, which `git apply`
+   rejects outright (no fuzzy matching). Fixed by adding `--recount` to the
+   `git apply` invocation, which recomputes the hunk range from the actual
+   context/added/removed lines instead of trusting the model's header.
+
+After both fixes, a live run reached the human gate with a real model-generated
+diff and commit message:
+
+```diff
+--- a/calculator.py
++++ b/calculator.py
+@@ -12,4 +12,4 @@ def multiply(a, b):
+ 
+ 
+ def divide(a, b):
+-    return a // b
++    return a / b
+```
+
+Answering `no` at the gate correctly reset the working tree and left
+`status: rejected_by_human` — no trace of the attempt in the target repo.

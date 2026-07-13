@@ -1,0 +1,6 @@
+{
+  "key": "DEMO-1",
+  "summary": "divide() returns integer-truncated result instead of a float",
+  "description": "In calculator.py, the divide(a, b) function is implemented using floor division (`a // b`) instead of true division (`a / b`). This truncates the result to an integer, dropping any fractional part.\n\nSteps to reproduce:\n  >>> from calculator import divide\n  >>> divide(7, 2)\n  3\n\nExpected: divide(7, 2) should return 3.5 (a true float division), not 3.\n\nThe regression test tests/test_calculator.py::test_divide asserts divide(7, 2) == 3.5 and currently fails with 'AssertionError: 3 != 3.5'.",
+  "affected_file": "calculator.py"
+}

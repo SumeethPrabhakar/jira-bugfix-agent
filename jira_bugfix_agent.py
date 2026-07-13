@@ -206,12 +206,15 @@ def plan(state: AgentState) -> dict:
 
 def patch(state: AgentState) -> dict:
     context = "\n\n".join(
-        f"=== {f} ===\n{read_file(f)}" for f in state["candidate_files"]
+        f"=== {os.path.relpath(f, state['repo_path'])} ===\n{read_file(f)}"
+        for f in state["candidate_files"]
     )
     resp = llm.invoke(
-        f"Fix plan:\n{state['fix_plan']}\n\nCurrent file contents:\n{context}\n\n"
-        "Output ONLY a valid unified diff (git apply format, a/ b/ prefixes, "
-        "correct hunk headers) implementing the plan. No prose, no code fences."
+        f"Fix plan:\n{state['fix_plan']}\n\nCurrent file contents (paths are relative "
+        f"to the repo root):\n{context}\n\n"
+        "Output ONLY a valid unified diff (git apply format, a/ b/ prefixes built "
+        "from the repo-relative paths shown above, correct hunk headers) "
+        "implementing the plan. No prose, no code fences."
     )
     diff = resp.content.strip()
     diff = re.sub(r"^```(?:diff)?\n?|\n?```$", "", diff)
@@ -221,7 +224,7 @@ def patch(state: AgentState) -> dict:
     _git(state["repo_path"], "checkout", "--", ".")  # reset any previous failed attempt
 
     proc = subprocess.run(
-        ["git", "apply", "--whitespace=fix", "-"],
+        ["git", "apply", "--whitespace=fix", "--recount", "-"],
         cwd=state["repo_path"], input=diff, capture_output=True, text=True,
     )
     if proc.returncode != 0:
